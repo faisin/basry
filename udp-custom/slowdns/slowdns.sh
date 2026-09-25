@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================
-# DNS SETUP slowdns Cloudflare API Token
+# DNS SETUP slowdns - manual DNS, no API token
 # =========================================
 
 # Tambah rule INPUT UDP 5300 kalau belum adaiptables -C INPUT -p udp --dport 5300 -j ACCEPT 2>/dev/null || \
@@ -31,40 +31,14 @@ SUB_DOMAIN="${domen}"
 NS_DOMAIN="asxns${subsl}.ipgivpn.my.id"
 echo "$NS_DOMAIN" > /root/nsdomain
 
-# Ask for Cloudflare API Token manually (fallback to default if empty)
-read -rp "Enter your Cloudflare API Token (Enter to use default): " CF_TOKEN
-if [[ -z "$CF_TOKEN" ]]; then
-    CF_TOKEN="${CF_TOKEN:?Missing CF_TOKEN}"
-    echo "Using default API token..."
-else
-    echo "Using manual API token."
-fi
-
-echo "Automatically adding NS record for ${SUB_DOMAIN}..."
-
-# Get Cloudflare Zone ID
-ZONE=$(curl -sLX GET "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN}&status=active" \
-     -H "Authorization: Bearer ${CF_TOKEN}" \
-     -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-# Check if NS record already exists
-RECORD=$(curl -sLX GET "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records?name=${NS_DOMAIN}" \
-     -H "Authorization: Bearer ${CF_TOKEN}" \
-     -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-# Create new NS record if not exists
-if [[ "${#RECORD}" -le 10 ]]; then
-     RECORD=$(curl -sLX POST "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records" \
-     -H "Authorization: Bearer ${CF_TOKEN}" \
-     -H "Content-Type: application/json" \
-     --data '{"type":"NS","name":"'${NS_DOMAIN}'","content":"'${SUB_DOMAIN}'","ttl":120,"proxied":false}' | jq -r '.result.id')
-fi
-
-# Update record if already exists
-RESULT=$(curl -sLX PUT "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records/${RECORD}" \
-     -H "Authorization: Bearer ${CF_TOKEN}" \
-     -H "Content-Type: application/json" \
-     --data '{"type":"NS","name":"'${NS_DOMAIN}'","content":"'${SUB_DOMAIN}'","ttl":120,"proxied":false}')
+# DNS is intentionally configured manually; this script never accepts, stores, or sends API tokens.
+echo ""
+echo "Manual DNS setup required (no provider API/token is used)."
+echo "Create the required DNS/NS record in your DNS provider before continuing."
+echo "Nameserver host: ${NS_DOMAIN}"
+echo "Target domain : ${SUB_DOMAIN}"
+echo ""
+read -rp "Press Enter after the DNS record has been created and propagated..." _
 
 service cron reload
 service cron restart
