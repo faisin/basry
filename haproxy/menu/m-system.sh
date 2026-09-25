@@ -141,4 +141,16 @@ while true; do
             fi
             
             echo -e "${cyan}Uptime:${nc} $(uptime -p | sed 's/up //')"
-            echo -e "${cyan}OS:${nc} $(grep PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '
+            echo -e "${cyan}OS:${nc} $(grep PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '"' )"
+            echo ""
+            read -rp "Press Enter to continue..." _
+            ;;
+        0|x|X)
+            exit 0
+            ;;
+        *)
+            echo -e "${yellow}Invalid option.${nc}"
+            sleep 1
+            ;;
+    esac
+done

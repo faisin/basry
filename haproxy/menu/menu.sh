@@ -1,232 +1,139 @@
-#!/bin/bash
-# ==========================================
-# VPS Management Menu - Xray & SSL
-# ==========================================
+#!/usr/bin/env bash
+# ============================================================
+# BASRY VPS PANEL — Aurora Edition
+# Lightweight terminal dashboard
+# ============================================================
+set -o pipefail
 
-# Initialize with error handling
-set -euo pipefail
+# ---------- Theme ----------
+RST='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
+BLACK='\033[30m'; RED='\033[31m'; GREEN='\033[32m'; YELLOW='\033[33m'
+BLUE='\033[34m'; MAGENTA='\033[35m'; CYAN='\033[36m'; WHITE='\033[37m'
+BG_BLUE='\033[44m'; BG_CYAN='\033[46m'; BG_MAGENTA='\033[45m'
 
-# Color definitions
-red='\e[1;31m'
-green='\e[0;32m'
-yellow='\e[1;33m'
-blue='\e[1;34m'
-white='\e[1;37m'
-cyan='\e[1;36m'
-nc='\e[0m'
+W=72
+command_exists(){ command -v "$1" >/dev/null 2>&1; }
+line(){ printf '%*s\n' "$W" '' | tr ' ' '─'; }
+bar(){ printf "${CYAN}╭%*s╮${RST}\n" "$((W-2))" '' | sed 's/ /─/g'; }
+endbar(){ printf "${CYAN}╰%*s╯${RST}\n" "$((W-2))" '' | sed 's/ /─/g'; }
 
-# Function to get IP with fallbacks
-get_ip() {
-    ip=$(curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null || \
-         wget -qO- --timeout=5 ipv4.icanhazip.com 2>/dev/null || \
-         echo "Unknown")
-    echo "$ip"
+get_ip(){
+  local ip=''
+  if command_exists curl; then ip=$(curl -4fsS --connect-timeout 3 --max-time 5 https://ipv4.icanhazip.com 2>/dev/null || true); fi
+  if [[ -z "$ip" ]] && command_exists wget; then ip=$(wget -qO- --timeout=5 https://ipv4.icanhazip.com 2>/dev/null || true); fi
+  printf '%s' "${ip:-Unknown}" | tr -d '[:space:]'
+}
+get_domain(){
+  local d=''
+  [[ -r /usr/local/etc/xray/domain ]] && d=$(head -n1 /usr/local/etc/xray/domain 2>/dev/null || true)
+  [[ -z "$d" && -r /root/domain ]] && d=$(head -n1 /root/domain 2>/dev/null || true)
+  printf '%s' "${d:-Not configured}"
+}
+get_cpu(){
+  if command_exists top; then
+    local v; v=$(top -bn1 2>/dev/null | awk -F',' '/Cpu\(s\)/ {gsub(/[^0-9.]/,"",$4); printf "%.0f",100-$4; exit}')
+    [[ -n "$v" ]] && printf '%s%%' "$v" && return
+  fi
+  printf 'N/A'
+}
+get_mem(){ free -h 2>/dev/null | awk 'NR==2{printf "%s / %s",$3,$2}' || printf 'N/A'; }
+get_disk(){ df -h / 2>/dev/null | awk 'NR==2{printf "%s / %s (%s)",$3,$2,$5}' || printf 'N/A'; }
+get_uptime(){ uptime -p 2>/dev/null | sed 's/^up //' || printf 'N/A'; }
+
+state(){
+  local svc="$1" label="$2"
+  if command_exists systemctl && systemctl is-active --quiet "$svc" 2>/dev/null; then
+    printf "${GREEN}●${RST} ${WHITE}%s${RST}" "$label"
+  elif command_exists systemctl && systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+    printf "${YELLOW}●${RST} ${DIM}%s${RST}" "$label"
+  else
+    printf "${RED}●${RST} ${DIM}%s${RST}" "$label"
+  fi
 }
 
-# Function to get domain safely
-get_domain() {
-    if [[ -f "/usr/local/etc/xray/domain" ]] && [[ -r "/usr/local/etc/xray/domain" ]]; then
-        domain=$(cat /usr/local/etc/xray/domain 2>/dev/null | head -n1)
-    elif [[ -f "/root/domain" ]] && [[ -r "/root/domain" ]]; then
-        domain=$(cat /root/domain 2>/dev/null | head -n1)
-    else
-        domain="Not Configured"
-    fi
-    echo "$domain"
+header(){
+  clear
+  printf "${CYAN}╭──────────────────────────────────────────────────────────────────────╮${RST}\n"
+  printf "${CYAN}│${RST}  ${BG_CYAN}${BLACK}${BOLD} BASRY VPS PANEL ${RST} ${WHITE}${BOLD}Aurora Edition${RST}                             ${CYAN}│${RST}\n"
+  printf "${CYAN}│${RST}  ${DIM}Secure management • VPN • Xray • System${RST}                      ${CYAN}│${RST}\n"
+  printf "${CYAN}╰──────────────────────────────────────────────────────────────────────╯${RST}\n\n"
 }
 
-# Function to check certificate status
-check_cert_status() {
-    local domain=$1
-    local cert_file="$HOME/.acme.sh/${domain}_ecc/${domain}.key"
-    
-    if [[ ! -f "$cert_file" ]]; then
-        echo "Not Found"
-        return
-    fi
-    
-    # More reliable certificate check
-    if modifyTime=$(stat -c %y "$cert_file" 2>/dev/null); then
-        modifyTime1=$(date +%s -d "$modifyTime")
-        currentTime=$(date +%s)
-        stampDiff=$((currentTime - modifyTime1))
-        days=$((stampDiff / 86400))
-        remainingDays=$((90 - days))
-        
-        if [[ $remainingDays -le 0 ]]; then
-            echo "expired"
-        else
-            echo "${remainingDays} days"
-        fi
-    else
-        echo "Unknown"
-    fi
+server_card(){
+  local ip domain os up cpu mem disk
+  ip=$(get_ip); domain=$(get_domain)
+  os=$(grep '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+  up=$(get_uptime); cpu=$(get_cpu); mem=$(get_mem); disk=$(get_disk)
+  printf "${BLUE}┌─ ${WHITE}${BOLD}SERVER OVERVIEW${RST} ${BLUE}───────────────────────────────────────────┐${RST}\n"
+  printf "${BLUE}│${RST} ${CYAN}IP${RST}       %-58s${BLUE}│${RST}\n" "$ip"
+  printf "${BLUE}│${RST} ${CYAN}DOMAIN${RST}   %-58s${BLUE}│${RST}\n" "$domain"
+  printf "${BLUE}│${RST} ${CYAN}OS${RST}       %-58s${BLUE}│${RST}\n" "${os:-Unknown}"
+  printf "${BLUE}│${RST} ${CYAN}UPTIME${RST}   %-58s${BLUE}│${RST}\n" "$up"
+  printf "${BLUE}│${RST} ${CYAN}CPU${RST}      %-58s${BLUE}│${RST}\n" "$cpu"
+  printf "${BLUE}│${RST} ${CYAN}MEMORY${RST}   %-58s${BLUE}│${RST}\n" "${mem:-N/A}"
+  printf "${BLUE}│${RST} ${CYAN}DISK${RST}     %-58s${BLUE}│${RST}\n" "${disk:-N/A}"
+  printf "${BLUE}└─────────────────────────────────────────────────────────────────────┘${RST}\n"
 }
 
-# Function to get CPU usage accurately
-get_cpu_usage() {
-    cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8"%"}')
-    echo "$cpu_usage"
+services(){
+  printf "\n${MAGENTA}┌─ ${WHITE}${BOLD}SERVICE MONITOR${RST} ${MAGENTA}──────────────────────────────────────────┐${RST}\n"
+  printf "${MAGENTA}│${RST}  %b   %b   %b   %b ${MAGENTA}│${RST}\n" "$(state xray Xray)" "$(state nginx Nginx)" "$(state ssh SSH)" "$(state cron Cron)"
+  printf "${MAGENTA}│${RST}  %b   %b   %b   %b ${MAGENTA}│${RST}\n" "$(state dropbear Dropbear)" "$(state stunnel4 Stunnel)" "$(state fail2ban Fail2ban)" "$(state ws-proxy WS-Proxy)"
+  printf "${MAGENTA}└─────────────────────────────────────────────────────────────────────┘${RST}\n"
 }
 
-# Function to display header
-display_header() {
-    clear
-    # Get all system information
-    MYIP=$(get_ip)
-    domain=$(get_domain)
-    tlsStatus=$(check_cert_status "$domain")
-    uptime=$(uptime -p | cut -d " " -f 2-10)
-    DATE2=$(date -R | cut -d " " -f -5)
-    cpu_usage=$(get_cpu_usage)
-    
-    # Memory information
-    tram=$(free -m | awk 'NR==2 {print $2}')
-    uram=$(free -m | awk 'NR==2 {print $3}')
-    fram=$(free -m | awk 'NR==2 {print $4}')
-    
-    # OS information
-    os_info=$(hostnamectl | grep "Operating System" | cut -d ' ' -f5-)
-    
-    echo -e "${red}=========================================${nc}"
-    echo -e "${blue}                      VPS INFO                    ${nc}"
-    echo -e "${red}=========================================${nc}"
-    echo -e "${white} OS            ${nc}: $os_info"
-    echo -e "${white} Uptime        ${nc}: $uptime"
-    echo -e "${white} IP            ${nc}: $MYIP"
-    echo -e "${white} DOMAIN        ${nc}: $domain"
-    echo -e "${white} TLS Status    ${nc}: $tlsStatus"
-    echo -e "${white} CPU Usage     ${nc}: $cpu_usage"
-    echo -e "${white} DATE & TIME   ${nc}: $DATE2"
-    echo -e "${red}=========================================${nc}"
-    echo -e "${blue}                      RAM INFO                    ${nc}"
-    echo -e "${red}=========================================${nc}"
-    echo -e ""
-    echo -e "${white} RAM USED     ${nc}: $uram MB"
-    echo -e "${white} RAM FREE     ${nc}: $fram MB"	
-    echo -e "${white} RAM TOTAL    ${nc}: $tram MB"
-    echo -e "${white} USAGE        ${nc}: $((uram * 100 / tram))%"
-    echo -e ""
+item(){ printf " ${CYAN}${BOLD}%2s${RST}  ${WHITE}%-24s${RST} ${DIM}%s${RST}\n" "$1" "$2" "$3"; }
+menu(){
+  printf "\n${GREEN}┌─ ${WHITE}${BOLD}VPN & ACCESS${RST} ${GREEN}────────────────────────────────────────────────────────┐${RST}\n"
+  item 1 'SSH / OpenVPN' 'account • trial • renew • delete'
+  item 2 'VMess' 'account management'
+  item 3 'VLESS' 'account management'
+  item 4 'Trojan' 'account management'
+  item 5 'Shadowsocks' 'WS account management'
+  printf "${GREEN}├─ ${WHITE}${BOLD}SYSTEM & TOOLS${RST} ${GREEN}───────────────────────────────────────────────┤${RST}\n"
+  item 6 'System Settings' 'domain • DNS • BBR • bandwidth'
+  item 7 'Tor' 'enable • disable • status'
+  item 8 'Xray Logs' 'connection / service logs'
+  item 9 'Service Status' 'full service overview'
+  item 10 'Clear RAM Cache' 'release filesystem cache'
+  item 11 'Reboot VPS' 'restart server safely'
+  printf "${GREEN}├─────────────────────────────────────────────────────────────────────┤${RST}\n"
+  item 0 'Refresh Dashboard' 'reload status'
+  item X 'Exit Panel' 'close dashboard'
+  printf "${GREEN}└─────────────────────────────────────────────────────────────────────┘${RST}\n"
 }
 
-# Function to display menu
-display_menu() {
-    echo -e "${red}=========================================${nc}"
-    echo -e "${blue}                       MENU                       ${nc}"
-    echo -e "${red}=========================================${nc}"
-    echo -e ""
-    echo -e "${white} 1 ${nc} : Menu SSH"
-    echo -e "${white} 2 ${nc} : Menu Vmess"
-    echo -e "${white} 3 ${nc} : Menu Vless"
-    echo -e "${white} 4 ${nc} : Menu Trojan"
-    echo -e "${white} 5 ${nc} : Menu Shadowsocks"
-    echo -e "${white} 6 ${nc} : Menu Setting"
-    echo -e "${white} 7 ${nc} : Xray Log"
-    echo -e "${white} 8 ${nc} : Status Service"
-    echo -e "${white} 9 ${nc} : Clear RAM Cache"
-    echo -e "${white}10 ${nc} : Reboot VPS"
-    echo -e "${white} x ${nc} : Exit Script"
-    echo -e ""
-    echo -e "${red}=========================================${nc}"
-    echo -e "${white} Client Name ${nc}: VIP-MEMBERS"
-    echo -e "${white} Expired     ${nc}: Lifetime"
-    echo -e "${red}=========================================${nc}"
-    echo -e "${blue}         t.me/givps_com ${nc}"
-    echo -e "${red}=========================================${nc}"
-    echo -e ""
+pause(){ printf "\n${DIM}Press Enter to return to dashboard...${RST}"; read -r; }
+
+run(){
+  local opt confirm
+  while :; do
+    header; server_card; services; menu
+    printf "\n${YELLOW}╭─ ACTION ─────────────────────────────────────────────────────────────╮${RST}\n"
+    printf "${YELLOW}│${RST} ${WHITE}Select${RST} ${CYAN}[0-11, X]${RST}: "
+    read -r opt
+    printf "${YELLOW}╰──────────────────────────────────────────────────────────────────────╯${RST}\n"
+    case "$opt" in
+      0|'') ;;
+      1) clear; m-sshovpn; pause;;
+      2) clear; m-vmess; pause;;
+      3) clear; m-vless; pause;;
+      4) clear; m-trojan; pause;;
+      5) clear; m-ssws; pause;;
+      6) clear; m-system; pause;;
+      7) clear; m-tor; pause;;
+      8) clear; xray-log; pause;;
+      9) clear; running; pause;;
+      10) clear; clearcache 2>/dev/null || clear_ram_cache 2>/dev/null || true; pause;;
+      11) printf "${YELLOW}Reboot VPS sekarang? [y/N]: ${RST}"; read -r confirm; if [[ "$confirm" =~ ^[Yy]$ ]]; then printf "${YELLOW}Rebooting...${RST}\n"; sleep 2; /sbin/reboot; fi;;
+      [xX]) clear; printf "${CYAN}${BOLD}BASRY VPS PANEL${RST}\n${GREEN}Panel ditutup. Jalankan ${WHITE}menu${GREEN} untuk membuka kembali.${RST}\n"; exit 0;;
+      *) printf "${RED}✕ Pilihan tidak valid.${RST}\n"; sleep 1;;
+    esac
+  done
 }
 
-# Function to clear RAM cache safely
-clear_ram_cache() {
-    echo -e "${yellow}Clearing RAM cache...${nc}"
-    sync
-    echo 3 > /proc/sys/vm/drop_caches
-    sleep 2
-    echo -e "${green}RAM cache cleared successfully!${nc}"
-    sleep 2
+main(){
+  [[ $EUID -eq 0 ]] || { printf "${RED}Run this panel as root.${RST}\n"; exit 1; }
+  run
 }
-
-# Function to reboot system safely
-safe_reboot() {
-    echo -e "${yellow}Rebooting system...${nc}"
-    echo -e "${yellow}Please wait...${nc}"
-    sleep 3
-    /sbin/reboot
-}
-
-# Function to handle invalid input
-handle_invalid_input() {
-    echo -e "${red}Invalid option! Please select a valid menu option.${nc}"
-    sleep 2
-}
-
-# Main menu function
-main_menu() {
-    while true; do
-        display_header
-        display_menu
-        
-        read -p " Select menu [1-10, x]: " opt
-        
-        case $opt in
-            1) clear ; m-sshovpn ;;
-            2) clear ; m-vmess ;;
-            3) clear ; m-vless ;;
-            4) clear ; m-trojan ;;
-            5) clear ; m-ssws ;;
-            6) clear ; m-system ;;
-            7) clear ; xray-log ;;
-            8) clear ; running ;;
-            9) clear ; clear_ram_cache ;;
-            10) clear ; safe_reboot ;;
-            x|X) 
-                echo -e "${green}Goodbye! To restart the menu use: menu${nc}"
-                exit 0 
-                ;;
-            *) 
-                handle_invalid_input 
-                ;;
-        esac
-        
-        # After executing any command (except exit), ask to continue
-        if [[ $opt != "x" ]] && [[ $opt != "X" ]]; then
-            echo ""
-            read -p "Press Enter to return to main menu..."
-        fi
-    done
-}
-
-# Check if required commands are available
-check_dependencies() {
-    local missing_deps=()
-    
-    for cmd in wget curl; do
-        if ! command -v "$cmd" &> /dev/null; then
-            missing_deps+=("$cmd")
-        fi
-    done
-    
-    if [[ ${#missing_deps[@]} -gt 0 ]]; then
-        echo -e "${red}Missing dependencies: ${missing_deps[*]}${nc}"
-        echo -e "${yellow}Please install them first.${nc}"
-        exit 1
-    fi
-}
-
-# Main execution
-main() {
-    # Check dependencies
-    check_dependencies
-    
-    # Trap Ctrl+C for graceful exit
-    trap 'echo -e "\n${yellow}Interrupted. Use Ctrl+D or type exit to quit properly.${nc}"; sleep 1' SIGINT
-    
-    # Start main menu
-    main_menu
-}
-
-# Run main function if script is executed directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
-
+main "$@"
