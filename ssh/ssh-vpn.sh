@@ -422,7 +422,6 @@ wget -O autodelete "https://raw.githubusercontent.com/faisin/basry/main/ssh/auto
 wget -O autokill "https://raw.githubusercontent.com/faisin/basry/main/ssh/autokill.sh"
 wget -O ceklim "https://raw.githubusercontent.com/faisin/basry/main/ssh/ceklim.sh"
 wget -O autokick "https://raw.githubusercontent.com/faisin/basry/main/ssh/autokick.sh"
-wget -O sshws "https://raw.githubusercontent.com/faisin/basry/main/ssh/sshws.sh"
 wget -O lock-unlock "https://raw.githubusercontent.com/faisin/basry/main/ssh/lock-unlock.sh"
 
 # menu system
@@ -434,7 +433,6 @@ wget -O restart "https://raw.githubusercontent.com/faisin/basry/main/menu/restar
 wget -O bw "https://raw.githubusercontent.com/faisin/basry/main/menu/bw.sh"
 wget -O m-tcp "https://raw.githubusercontent.com/faisin/basry/main/menu/tcp.sh"
 wget -O xp "https://raw.githubusercontent.com/faisin/basry/main/ssh/xp.sh"
-wget -O sshws "https://raw.githubusercontent.com/faisin/basry/main/ssh/sshws.sh"
 wget -O m-dns "https://raw.githubusercontent.com/faisin/basry/main/menu/m-dns.sh"
 wget -O m-tor "https://raw.githubusercontent.com/faisin/basry/main/menu/m-tor.sh"
 
