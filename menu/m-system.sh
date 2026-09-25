@@ -5,11 +5,12 @@
 
 # ---------- Colors ----------
 red='\e[1;31m'
-green='\e[0;32m'
+green='\e[1;32m'
 yellow='\e[1;33m'
 blue='\e[1;34m'
 cyan='\e[1;36m'
 white='\e[1;37m'
+magenta='\e[1;35m'
 nc='\e[0m'
 
 # ---------- System Info ----------
@@ -45,9 +46,9 @@ show_system_status() {
 # Function to display menu
 show_menu() {
     clear
-    echo -e "${red}=========================================${nc}"
-    echo -e "${blue}             SYSTEM MENU               ${nc}"
-    echo -e "${red}=========================================${nc}"
+    echo -e "${cyan}╔══════════════════════════════════════════════════════════════╗${nc}"
+    echo -e "${cyan}║${nc} ${white}${BOLD:-}                 SYSTEM SETTINGS                 ${nc}${cyan}║${nc}"
+    echo -e "${cyan}╚══════════════════════════════════════════════════════════════╝${nc}"
     echo ""
     
     # Show system status
