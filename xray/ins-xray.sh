@@ -97,10 +97,8 @@ apt install -y curl wget socat cron openssl bash >/dev/null 2>&1
 domain=$(cat /usr/local/etc/xray/domain 2>/dev/null || cat /root/domain 2>/dev/null)
 [[ -z "$domain" ]] && echo -e "${red}[ERROR] Domain file not found!${nc}" && exit 1
 
-# ---------- Cloudflare Token ----------
-DEFAULT_CF_TOKEN="XCu7wHsxlkbcU3GSPOEvl1BopubJxA9kDcr-Tkt8"
-read -rp "Enter Cloudflare API Token (ENTER for default): " CF_Token
-export CF_Token="${CF_Token:-$DEFAULT_CF_TOKEN}"
+# ---------- Tokenless certificate issuance ----------
+# Uses ACME HTTP-01 standalone validation; no DNS API or provider token is required.
 
 # ---------- Retry helper ----------
 retry() { local n=1; until "$@"; do ((n++==5)) && exit 1; echo -e "${yellow}Retry $n...${nc}"; sleep 3; done; }
@@ -115,17 +113,13 @@ fi
 # Reload ACME_HOME
 export ACME_HOME="/root/.acme.sh"
 
-# ---------- Ensure Cloudflare DNS hook ----------
-mkdir -p "$ACME_HOME/dnsapi"
-[ ! -f "$ACME_HOME/dnsapi/dns_cf.sh" ] && wget -qO "$ACME_HOME/dnsapi/dns_cf.sh" https://raw.githubusercontent.com/acmesh-official/acme.sh/master/dnsapi/dns_cf.sh && chmod +x "$ACME_HOME/dnsapi/dns_cf.sh"
-
 # ---------- Register ACME account ----------
 echo -e "[${green}INFO${nc}] Registering ACME account..."
 retry bash "$ACME_HOME/acme.sh" --register-account -m ssl@ipgivpn.my.id --server letsencrypt
 
-# ---------- Issue wildcard certificate ----------
-echo -e "[${blue}INFO${nc}] Issuing wildcard certificate for ${domain}..."
-retry bash "$ACME_HOME/acme.sh" --issue --dns dns_cf -d "$domain" -d "*.$domain" --force --server letsencrypt
+# ---------- Issue certificate (HTTP-01, no token) ----------
+echo -e "[${blue}INFO${nc}] Issuing certificate for ${domain} using HTTP-01..."
+retry bash "$ACME_HOME/acme.sh" --issue --standalone -d "$domain" --force --server letsencrypt
 
 # ---------- Install certificate ----------
 echo -e "[${blue}INFO${nc}] Installing certificate..."
@@ -141,7 +135,7 @@ EOF
 chmod 644 /etc/cron.d/acme-renew
 
 # ---------- Done ----------
-echo -e "[${green}SUCCESS${nc}] ACME.sh + Cloudflare setup completed!"
+echo -e "[${green}SUCCESS${nc}] ACME.sh tokenless setup completed!"
 echo -e "CRT: /usr/local/etc/xray/xray.crt"
 echo -e "KEY: /usr/local/etc/xray/xray.key"
 
