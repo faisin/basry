@@ -51,42 +51,10 @@ elif [[ $dom -eq 2 ]]; then
         echo -e "${green}✅ Domain already points to this VPS.${nc}"
     fi
 
-    # If not pointing, offer Cloudflare API creation
+    # DNS changes are intentionally manual: no Cloudflare API/token is used.
     if [[ "$DNS_IP" != "$MYIP" ]]; then
-        echo -e "\n${yellow}Would you like to create an A record on Cloudflare using API Token?${nc}"
-        read -rp "Create record automatically? (y/n): " ans
-        if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-            read -rp "Enter your Cloudflare API Token: " CF_API
-            read -rp "Enter your Cloudflare Zone Name / Primary Domain Name (e.g. example.com): " CF_ZONE
-            ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${CF_ZONE}" \
-                -H "Authorization: Bearer ${CF_API}" \
-                -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-            if [[ -z "$ZONE_ID" || "$ZONE_ID" == "null" ]]; then
-                echo -e "${red}Failed to get Zone ID. Please check your token and zone name.${nc}"
-            else
-                echo -e "${green}Zone ID found: ${ZONE_ID}${nc}"
-                # Create or update DNS record
-                RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=${domen}" \
-                    -H "Authorization: Bearer ${CF_API}" \
-                    -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-                if [[ "$RECORD_ID" == "null" || -z "$RECORD_ID" ]]; then
-                    echo -e "${yellow}Creating new A record for ${domen}...${nc}"
-                    curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
-                        -H "Authorization: Bearer ${CF_API}" \
-                        -H "Content-Type: application/json" \
-                        --data "{\"type\":\"A\",\"name\":\"${domen}\",\"content\":\"${MYIP}\",\"ttl\":120,\"proxied\":false}" >/dev/null
-                else
-                    echo -e "${yellow}Updating existing A record for ${domen}...${nc}"
-                    curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
-                        -H "Authorization: Bearer ${CF_API}" \
-                        -H "Content-Type: application/json" \
-                        --data "{\"type\":\"A\",\"name\":\"${domen}\",\"content\":\"${MYIP}\",\"ttl\":120,\"proxied\":false}" >/dev/null
-                fi
-                echo -e "${green}✅ DNS record set to ${MYIP}${nc}"
-            fi
-        fi
+        echo -e "\n${yellow}Set an A record manually for ${domen} -> ${MYIP}.${nc}"
+        echo -e "${yellow}After updating DNS, run this check again before requesting SSL.${nc}"
     fi
 
     # Continue installation
