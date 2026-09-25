@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # =========================================
 # install ssh tool
 # =========================================
@@ -146,7 +147,7 @@ systemctl enable fail2ban
 systemctl start fail2ban
 
 # Instal DDOS Deflate
-wget -qO- https://raw.githubusercontent.com/faisin/basry/main/ssh/auto-install-ddos.sh | bash
+# DDOS Deflate script is not bundled in this release; skip legacy remote dependency.
 
 # =========================================
 # CONFIGURE SSH DIRECT PORTS
@@ -227,7 +228,6 @@ wget -O autodelete "https://raw.githubusercontent.com/faisin/basry/main/haproxy/
 wget -O autokill "https://raw.githubusercontent.com/faisin/basry/main/haproxy/autokill.sh"
 wget -O ceklim "https://raw.githubusercontent.com/faisin/basry/main/ssh/ceklim.sh"
 wget -O autokick "https://raw.githubusercontent.com/faisin/basry/main/ssh/autokick.sh"
-wget -O sshws "https://raw.githubusercontent.com/faisin/basry/main/ssh/sshws.sh"
 wget -O lock-unlock "https://raw.githubusercontent.com/faisin/basry/main/haproxy/lock-unlock.sh"
 
 # menu system
@@ -239,7 +239,6 @@ wget -O restart "https://raw.githubusercontent.com/faisin/basry/main/haproxy/men
 wget -O bw "https://raw.githubusercontent.com/faisin/basry/main/menu/bw.sh"
 wget -O m-tcp "https://raw.githubusercontent.com/faisin/basry/main/menu/tcp.sh"
 wget -O xp "https://raw.githubusercontent.com/faisin/basry/main/ssh/xp.sh"
-wget -O sshws "https://raw.githubusercontent.com/faisin/basry/main/ssh/sshws.sh"
 wget -O m-dns "https://raw.githubusercontent.com/faisin/basry/main/menu/m-dns.sh"
 
 chmod +x menu
@@ -261,7 +260,6 @@ chmod +x autodelete
 chmod +x autokill
 chmod +x ceklim
 chmod +x autokick
-chmod +x sshws
 chmod +x lock-unlock
 
 chmod +x m-system
@@ -272,7 +270,6 @@ chmod +x restart
 chmod +x bw
 chmod +x m-tcp
 chmod +x xp
-chmod +x sshws
 chmod +x m-dns
 
 # Install speedtest (using modern method)
