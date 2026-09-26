@@ -40,11 +40,11 @@ OS="${ID:-unknown}"
 OS_VERSION="${VERSION_ID:-unknown}"
 
 case "${OS}:${OS_VERSION}" in
-    debian:11|debian:12|debian:13|ubuntu:22.04|ubuntu:24.04|ubuntu:26.04)
+    debian:11|debian:12|debian:13|ubuntu:20.04|ubuntu:22.04|ubuntu:24.04|ubuntu:26.04)
         ;;
     *)
         echo -e "${red}ERROR: Unsupported OS: ${PRETTY_NAME:-$OS $OS_VERSION}.${nc}"
-        echo -e "Supported: Debian 11/12/13 and Ubuntu 22.04/24.04/26.04."
+        echo -e "Supported: Debian 11/12/13 and Ubuntu 20.04/22.04/24.04/26.04."
         exit 1
         ;;
 esac
@@ -356,7 +356,7 @@ echo "   - Trojan gRPC              : 443" | tee -a ~/log-install.txt
 echo "   - Shadowsocks gRPC         : 443" | tee -a ~/log-install.txt
 echo ""
 echo -e "=========================================" | tee -a ~/log-install.txt
-echo -e "               t.me/givps_com            "  | tee -a ~/log-install.txt
+echo -e "               Faysal Basry Anak Lombok            "  | tee -a ~/log-install.txt
 echo -e "=========================================" | tee -a ~/log-install.txt
 echo ""
 echo -e "Auto reboot in 10 seconds..."
