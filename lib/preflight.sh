@@ -14,7 +14,7 @@ detect_supported_os() {
   OS_ID="${ID:-}"
   OS_VERSION_ID="${VERSION_ID:-}"
   case "$OS_ID:$OS_VERSION_ID" in
-    debian:11|debian:12|debian:13|ubuntu:22.04|ubuntu:24.04|ubuntu:26.04) ;;
+    debian:11|debian:12|debian:13|ubuntu:20.04|ubuntu:22.04|ubuntu:24.04|ubuntu:26.04) ;;
     *) echo "ERROR: OS tidak didukung: ${OS_ID:-unknown} ${OS_VERSION_ID:-unknown}" >&2; exit 1 ;;
   esac
   export OS_ID OS_VERSION_ID
