@@ -43,20 +43,20 @@ get_uptime(){ uptime -p 2>/dev/null | sed 's/^up //' || printf 'N/A'; }
 state(){
   local svc="$1" label="$2"
   if command_exists systemctl && systemctl is-active --quiet "$svc" 2>/dev/null; then
-    printf "${GREEN}●${RST} ${WHITE}%s${RST}" "$label"
+    printf "${GREEN}●${RST} ${WHITE}%-10s${RST}" "$label"
   elif command_exists systemctl && systemctl is-enabled --quiet "$svc" 2>/dev/null; then
-    printf "${YELLOW}●${RST} ${DIM}%s${RST}" "$label"
+    printf "${YELLOW}●${RST} ${DIM}%-10s${RST}" "$label"
   else
-    printf "${RED}●${RST} ${DIM}%s${RST}" "$label"
+    printf "${RED}●${RST} ${DIM}%-10s${RST}" "$label"
   fi
 }
 
 header(){
   clear
-  printf "${CYAN}╭──────────────────────────────────────────────────────────────────────╮${RST}\n"
+  printf "${CYAN}┌──────────────────────────────────────────────────────────────────────┐${RST}\n"
   printf "${CYAN}│${RST}  ${BG_CYAN}${BLACK}${BOLD} BASRY VPS PANEL ${RST} ${WHITE}${BOLD}Aurora Edition${RST}                             ${CYAN}│${RST}\n"
   printf "${CYAN}│${RST}  ${DIM}Secure management • VPN • Xray • System${RST}                      ${CYAN}│${RST}\n"
-  printf "${CYAN}╰──────────────────────────────────────────────────────────────────────╯${RST}\n\n"
+  printf "${CYAN}└──────────────────────────────────────────────────────────────────────┘${RST}\n\n"
 }
 
 server_card(){
@@ -77,12 +77,13 @@ server_card(){
 
 services(){
   printf "\n${MAGENTA}┌─ ${WHITE}${BOLD}SERVICE MONITOR${RST} ${MAGENTA}──────────────────────────────────────────┐${RST}\n"
-  printf "${MAGENTA}│${RST}  %b   %b   %b   %b ${MAGENTA}│${RST}\n" "$(state xray Xray)" "$(state nginx Nginx)" "$(state ssh SSH)" "$(state cron Cron)"
-  printf "${MAGENTA}│${RST}  %b   %b   %b   %b ${MAGENTA}│${RST}\n" "$(state dropbear Dropbear)" "$(state stunnel4 Stunnel)" "$(state fail2ban Fail2ban)" "$(state ws-proxy WS-Proxy)"
+  printf "${MAGENTA}│${RST}  %b %b %b %b ${MAGENTA}│${RST}\n" "$(state xray Xray)" "$(state nginx Nginx)" "$(state ssh SSH)" "$(state cron Cron)"
+  printf "${MAGENTA}│${RST}  %b %b %b %b ${MAGENTA}│${RST}\n" "$(state dropbear Dropbear)" "$(state stunnel4 Stunnel)" "$(state fail2ban Fail2ban)" "$(state ws-proxy WS-Proxy)"
   printf "${MAGENTA}└─────────────────────────────────────────────────────────────────────┘${RST}\n"
 }
 
-item(){ printf " ${CYAN}${BOLD}%2s${RST}  ${WHITE}%-24s${RST} ${DIM}%s${RST}\n" "$1" "$2" "$3"; }
+item(){ printf " ${CYAN}${BOLD}%2s${RST} ${DIM}│${RST} ${WHITE}%-24s${RST} ${DIM}│ %s${RST}\n" "$1" "$2" "$3"; }
+
 menu(){
   printf "\n${GREEN}┌─ ${WHITE}${BOLD}VPN & ACCESS${RST} ${GREEN}────────────────────────────────────────────────────────┐${RST}\n"
   item 1 'SSH / OpenVPN' 'account • trial • renew • delete'
